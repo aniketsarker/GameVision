@@ -85,7 +85,7 @@ class RecordService : Service() {
             val values = ContentValues().apply {
                 put(MediaStore.Video.Media.DISPLAY_NAME, "gv_${System.currentTimeMillis()}.mp4")
                 put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
-                put(MediaStore.Video.Media.RELATIVE_DIRECTORY, "Movies/GameVision")
+                put(MediaStore.MediaColumns.RELATIVE_DIRECTORY, "Movies/GameVision")
             }
             val uri = contentResolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values)!!
             val pfd = contentResolver.openFileDescriptor(uri, "rw")!!
@@ -145,15 +145,21 @@ class RecordService : Service() {
                         val values = ContentValues().apply {
                             put(MediaStore.Images.Media.DISPLAY_NAME, "gv_${System.currentTimeMillis()}.png")
                             put(MediaStore.Images.Media.MIME_TYPE, "image/png")
-                            put(MediaStore.Images.Media.RELATIVE_DIRECTORY, "Pictures/GameVision")
+                            put(MediaStore.MediaColumns.RELATIVE_DIRECTORY, "Pictures/GameVision")
                         }
                         val uri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
-                        uri?.let { contentResolver.openOutputStream(it)?.use { os ->
-                            crop.compress(Bitmap.CompressFormat.PNG, 100, os)
-                        } }
+                        uri?.let {
+                            contentResolver.openOutputStream(it)?.use { os ->
+                                crop.compress(Bitmap.CompressFormat.PNG, 100, os)
+                            }
+                        }
                         Toast.makeText(this, "Screenshot saved!", Toast.LENGTH_SHORT).show()
-                    } else Toast.makeText(this, "Shot fail", Toast.LENGTH_SHORT).show()
-                } catch (e: Exception) { e.printStackTrace() }
+                    } else {
+                        Toast.makeText(this, "Shot fail", Toast.LENGTH_SHORT).show()
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
                 svd.release(); reader.close()
                 projection?.stop(); projection = null
                 stopSelf()
