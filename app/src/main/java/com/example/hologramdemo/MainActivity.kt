@@ -1,101 +1,90 @@
 package com.example.hologramdemo
 
-import android.app.NotificationManager
-import android.content.Context
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.widget.Button
-import android.widget.TextView
+import android.widget.EditText
+import android.widget.ListView
+import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 
 class MainActivity : AppCompatActivity() {
 
-    private var isVisionOn = false
-    private var isGamingModeOn = false
-    private var previousDNDMode = NotificationManager.INTERRUPTION_FILTER_ALL
+    private val extraGames = listOf(
+        "com.dts.freefireth", "com.dts.freefiremax", "com.pubg.imobile",
+        "com.tencent.ig", "com.activision.callofduty.shooter",
+        "com.mobile.legends", "com.supercell.clashofclans"
+    )
+    private val packages = mutableListOf<String>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val statusText = findViewById<TextView>(R.id.status)
-        val visionButton = findViewById<Button>(R.id.visionButton)
-        val gamingModeButton = findViewById<Button>(R.id.gamingModeButton)
+        val list = findViewById<ListView>(R.id.gameList)
+        val edit = findViewById<EditText>(R.id.pkgInput)
+        val addBtn = findViewById<Button>(R.id.addBtn)
+        val bubbleBtn = findViewById<Button>(R.id.bubbleBtn)
 
-        if (!Settings.canDrawOverlays(this)) {
-            askOverlayPermission()
+        loadGames()
+        val adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1,
+            packages.map { label(it) })
+        list.adapter = adapter
+
+        list.setOnItemClickListener { _, _, pos, _ ->
+            val intent = packageManager.getLaunchIntentForPackage(packages[pos])
+            if (intent != null) startActivity(intent)
+            else Toast.makeText(this, "Game launch kora gelo na", Toast.LENGTH_SHORT).show()
         }
 
-        visionButton.setOnClickListener {
-            if (!Settings.canDrawOverlays(this)) {
-                askOverlayPermission()
+        addBtn.setOnClickListener {
+            val pkg = edit.text.toString().trim()
+            if (pkg.isEmpty()) return@setOnClickListener
+            if (packageManager.getLaunchIntentForPackage(pkg) == null) {
+                Toast.makeText(this, "Package paoa jay nai!", Toast.LENGTH_LONG).show()
                 return@setOnClickListener
             }
-
-            isVisionOn = !isVisionOn
-            if (isVisionOn) {
-                startService(Intent(this, VisionOverlayService::class.java))
-                visionButton.text = "Disable Vision Filter"
-                statusText.text = "Vision: ON (Green + Edge Block)"
-            } else {
-                stopService(Intent(this, VisionOverlayService::class.java))
-                visionButton.text = "Enable Vision Filter"
-                statusText.text = "Vision: OFF"
-            }
+            val set = getSharedPreferences("gv", MODE_PRIVATE)
+                .getStringSet("manual", mutableSetOf()).orEmpty().toMutableSet()
+            set.add(pkg)
+            getSharedPreferences("gv", MODE_PRIVATE).edit()
+                .putStringSet("manual", set).apply()
+            loadGames()
+            adapter.clear()
+            adapter.addAll(packages.map { label(it) })
+            adapter.notifyDataSetChanged()
+            edit.setText("")
         }
 
-        gamingModeButton.setOnClickListener {
-            isGamingModeOn = !isGamingModeOn
-
-            if (isGamingModeOn) {
-                enableGamingMode()
-                gamingModeButton.text = "Exit Gaming Mode"
-            } else {
-                disableGamingMode()
-                gamingModeButton.text = "Enable Gaming Mode"
+        bubbleBtn.setOnClickListener {
+            if (!Settings.canDrawOverlays(this)) {
+                startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:$packageName")))
+                Toast.makeText(this, "Display over other apps ALLOW koro", Toast.LENGTH_LONG).show()
+                return@setOnClickListener
             }
+            startForegroundService(Intent(this, BubbleService::class.java))
+            Toast.makeText(this, "Bubble ON - game e gele bubble ashbe", Toast.LENGTH_SHORT).show()
         }
     }
 
-    private fun askOverlayPermission() {
-        val intent = Intent(
-            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-            Uri.parse("package:$packageName")
-        )
-        startActivity(intent)
-    }
+    private fun label(pkg: String): String = try {
+        packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0)).toString()
+    } catch (e: Exception) { pkg }
 
-    private fun enableGamingMode() {
-        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (notificationManager.isNotificationPolicyAccessGranted) {
-                previousDNDMode = notificationManager.currentInterruptionFilter
-                notificationManager.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_NONE)
-                Toast.makeText(this, "Gaming Mode ON: Calls Blocked", Toast.LENGTH_SHORT).show()
-            } else {
-                val intent = Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)
-                startActivity(intent)
-                Toast.makeText(this, "Please allow DND access for Gaming Mode", Toast.LENGTH_LONG).show()
-            }
-        }
-    }
-
-    private fun disableGamingMode() {
-        window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (notificationManager.isNotificationPolicyAccessGranted) {
-                notificationManager.setInterruptionFilter(previousDNDMode)
-                Toast.makeText(this, "Gaming Mode OFF: Notifications Restored", Toast.LENGTH_SHORT).show()
-            }
-        }
+    private fun loadGames() {
+        packages.clear()
+        val manual = getSharedPreferences("gv", MODE_PRIVATE)
+            .getStringSet("manual", emptySet()).orEmpty()
+        val installed = try {
+            packageManager.getInstalledApplications(0)
+                .filter { it.category == ApplicationInfo.CATEGORY_GAME }
+                .map { it.packageName }
+        } catch (e: Exception) { emptyList() }
+        packages.addAll((installed + extraGames + manual).distinct())
     }
 }
