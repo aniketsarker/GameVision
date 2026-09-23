@@ -4,34 +4,53 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:gravity="center"
-    android:padding="24dp"
+    android:padding="16dp"
     android:background="#121212">
 
     <TextView
-        android:id="@+id/status"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="System: Ready"
+        android:text="Game Enhancer"
         android:textColor="#00FF00"
-        android:textSize="20sp"
-        android:layout_marginBottom="30dp"/>
+        android:textSize="22sp"
+        android:layout_marginBottom="12dp"/>
 
-    <Button
-        android:id="@+id/visionButton"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Enable Vision Filter"
-        android:backgroundTint="#2E7D32"
-        android:textColor="#FFFFFF"
-        android:layout_marginBottom="15dp"/>
+        android:orientation="horizontal">
+
+        <EditText
+            android:id="@+id/pkgInput"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="package name (add)"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#777777"
+            android:textSize="14sp"/>
+
+        <Button
+            android:id="@+id/addBtn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Add"
+            android:textSize="12sp"/>
+    </LinearLayout>
+
+    <ListView
+        android:id="@+id/gameList"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:background="#1E1E1E"/>
 
     <Button
-        android:id="@+id/gamingModeButton"
+        android:id="@+id/bubbleBtn"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Enable Gaming Mode"
-        android:backgroundTint="#1565C0"
-        android:textColor="#FFFFFF"/>
+        android:text="Start Game Bubble"
+        android:backgroundTint="#00897B"
+        android:layout_marginTop="12dp"/>
 
 </LinearLayout>
